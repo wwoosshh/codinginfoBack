@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import Article from '../models/Article';
-import { config } from '../config/database';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const cleanDatabase = async () => {
   try {
     console.log('🔄 Connecting to MongoDB...');
-    await mongoose.connect(config.mongoUri);
+    await mongoose.connect(process.env.MONGODB_URI as string);
     console.log('✅ Connected to MongoDB');
 
     // Clear all existing articles
