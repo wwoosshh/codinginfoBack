@@ -7,7 +7,6 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import connectDB from './config/database';
-import { seedData } from './utils/seedData';
 import articleRoutes from './routes/articles';
 import authRoutes from './routes/auth';
 
@@ -19,7 +18,6 @@ const PORT: number = parseInt(process.env.PORT || '5159', 10);
 const initializeServer = async () => {
   try {
     await connectDB();
-    await seedData();
     console.log('✅ Server initialization completed');
   } catch (error) {
     console.error('❌ Server initialization failed:', error);
