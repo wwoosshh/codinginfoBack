@@ -15,7 +15,7 @@ const logger = winston_1.default.createLogger({
     format: combine(timestamp(), errors({ stack: true })),
     defaultMeta: {
         service: 'codinginfo-backend',
-        version: '1.2.0',
+        version: '1.2.2',
     },
     transports: [
         new winston_1.default.transports.Console({
