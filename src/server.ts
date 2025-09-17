@@ -17,8 +17,14 @@ const app = express();
 const PORT: number = parseInt(process.env.PORT || '5159', 10);
 
 const initializeServer = async () => {
-  await connectDB();
-  await seedData();
+  try {
+    await connectDB();
+    await seedData();
+    console.log('✅ Server initialization completed');
+  } catch (error) {
+    console.error('❌ Server initialization failed:', error);
+    process.exit(1);
+  }
 };
 
 initializeServer();
