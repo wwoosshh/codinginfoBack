@@ -101,7 +101,6 @@ ArticleSchema.pre('save', function (next) {
 });
 ArticleSchema.index({ title: 'text', description: 'text', content: 'text' });
 ArticleSchema.index({ category: 1 });
-ArticleSchema.index({ slug: 1 });
 ArticleSchema.index({ createdAt: -1 });
 exports.default = mongoose_1.default.model('Article', ArticleSchema);
 //# sourceMappingURL=Article.js.map

@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import connectDB from './config/database';
+import { globalErrorHandler, notFoundHandler } from './utils/errorHandler';
 import articleRoutes from './routes/articles';
 import authRoutes from './routes/auth';
 
@@ -56,20 +57,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use((req, res) => {
-  res.status(404).json({
-    message: 'Route not found',
-    path: req.originalUrl,
-  });
-});
-
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', error);
-  res.status(500).json({
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong',
-  });
-});
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${PORT}`);

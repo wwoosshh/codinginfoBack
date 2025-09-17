@@ -84,7 +84,6 @@ ArticleSchema.pre('save', function (next) {
 
 ArticleSchema.index({ title: 'text', description: 'text', content: 'text' });
 ArticleSchema.index({ category: 1 });
-ArticleSchema.index({ slug: 1 });
 ArticleSchema.index({ createdAt: -1 });
 
 export default mongoose.model<IArticle>('Article', ArticleSchema);
