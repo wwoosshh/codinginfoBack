@@ -83,7 +83,7 @@ const ArticleSchema: Schema = new Schema(
     author: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Author is required'],
+      required: false, // 마이그레이션을 위해 임시로 false
     },
     tags: [{
       type: String,
