@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -16,6 +49,7 @@ const errorHandler_1 = require("./utils/errorHandler");
 const logger_1 = require("./utils/logger");
 const articles_1 = __importDefault(require("./routes/articles"));
 const auth_1 = __importDefault(require("./routes/auth"));
+const admin_1 = __importDefault(require("./routes/admin"));
 const mongoose_1 = __importDefault(require("mongoose"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -51,6 +85,7 @@ app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 (0, swagger_1.setupSwagger)(app);
 app.use('/api/articles', articles_1.default);
 app.use('/api/auth', auth_1.default);
+app.use('/api/admin', admin_1.default);
 app.get('/health', async (req, res) => {
     try {
         const dbStatus = mongoose_1.default.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -64,7 +99,7 @@ app.get('/health', async (req, res) => {
         res.json({
             status: 'UP',
             timestamp: new Date().toISOString(),
-            version: '1.2.2',
+            version: '1.3.0',
             environment: process.env.NODE_ENV || 'development',
             uptime: process.uptime(),
             database: {
@@ -80,6 +115,32 @@ app.get('/health', async (req, res) => {
             status: 'DOWN',
             timestamp: new Date().toISOString(),
             error: 'Health check failed',
+        });
+    }
+});
+app.get('/debug/articles', async (req, res) => {
+    try {
+        const { debugArticles } = await Promise.resolve().then(() => __importStar(require('./scripts/debugArticles')));
+        const result = await debugArticles();
+        res.json(result);
+    }
+    catch (error) {
+        res.status(500).json({
+            error: 'Debug failed',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+app.post('/migrate/articles', async (req, res) => {
+    try {
+        const { migrateArticles } = await Promise.resolve().then(() => __importStar(require('./scripts/migrateArticles')));
+        const result = await migrateArticles();
+        res.json(result);
+    }
+    catch (error) {
+        res.status(500).json({
+            error: 'Migration failed',
+            message: error instanceof Error ? error.message : 'Unknown error'
         });
     }
 });

@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CategoryDisplayNames = exports.Category = void 0;
+exports.ArticleStatus = exports.CategoryDisplayNames = exports.Category = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 var Category;
 (function (Category) {
@@ -52,6 +52,12 @@ exports.CategoryDisplayNames = {
     [Category.WEB_DEVELOPMENT]: '웹 개발',
     [Category.DATA_STRUCTURE]: '자료구조',
 };
+var ArticleStatus;
+(function (ArticleStatus) {
+    ArticleStatus["DRAFT"] = "draft";
+    ArticleStatus["PUBLISHED"] = "published";
+    ArticleStatus["ARCHIVED"] = "archived";
+})(ArticleStatus || (exports.ArticleStatus = ArticleStatus = {}));
 const ArticleSchema = new mongoose_1.Schema({
     title: {
         type: String,
@@ -85,6 +91,28 @@ const ArticleSchema = new mongoose_1.Schema({
         trim: true,
         maxlength: [100, 'Slug cannot be more than 100 characters'],
     },
+    status: {
+        type: String,
+        enum: Object.values(ArticleStatus),
+        default: ArticleStatus.DRAFT,
+    },
+    author: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+    },
+    tags: [{
+            type: String,
+            trim: true,
+            maxlength: [50, 'Tag cannot be more than 50 characters'],
+        }],
+    viewCount: {
+        type: Number,
+        default: 0,
+    },
+    publishedAt: {
+        type: Date,
+    },
     imageUrl: {
         type: String,
         trim: true,
@@ -97,10 +125,20 @@ ArticleSchema.pre('save', function (next) {
     if (this.isModified('category')) {
         this.categoryDisplayName = exports.CategoryDisplayNames[this.category];
     }
+    if (this.isModified('status')) {
+        if (this.status === ArticleStatus.PUBLISHED && !this.publishedAt) {
+            this.publishedAt = new Date();
+        }
+    }
     next();
 });
 ArticleSchema.index({ title: 'text', description: 'text', content: 'text' });
 ArticleSchema.index({ category: 1 });
+ArticleSchema.index({ status: 1 });
+ArticleSchema.index({ author: 1 });
+ArticleSchema.index({ tags: 1 });
 ArticleSchema.index({ createdAt: -1 });
+ArticleSchema.index({ publishedAt: -1 });
+ArticleSchema.index({ viewCount: -1 });
 exports.default = mongoose_1.default.model('Article', ArticleSchema);
 //# sourceMappingURL=Article.js.map

@@ -32,16 +32,64 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteArticle = exports.updateArticle = exports.createArticle = exports.searchArticles = exports.getArticlesByCategory = exports.getArticleBySlug = exports.getAllArticles = void 0;
 const Article_1 = __importStar(require("../models/Article"));
+const logger_1 = __importDefault(require("../utils/logger"));
 const getAllArticles = async (req, res) => {
     try {
-        const articles = await Article_1.default.find().sort({ createdAt: -1 });
-        res.json(articles);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        const search = req.query.search;
+        const category = req.query.category;
+        const tags = req.query.tags;
+        let query = { status: Article_1.ArticleStatus.PUBLISHED };
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } },
+            ];
+        }
+        if (category && Object.values(Article_1.Category).includes(category)) {
+            query.category = category;
+        }
+        if (tags) {
+            const tagArray = tags.split(',').map(tag => tag.trim());
+            query.tags = { $in: tagArray };
+        }
+        const [articles, totalArticles] = await Promise.all([
+            Article_1.default.find(query)
+                .populate('author', 'username')
+                .sort({ publishedAt: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Article_1.default.countDocuments(query),
+        ]);
+        logger_1.default.info('Articles fetched', {
+            page,
+            limit,
+            totalArticles,
+            query: { ...query, author: undefined }
+        });
+        res.json({
+            articles,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalArticles / limit),
+                totalArticles,
+                hasNextPage: page < Math.ceil(totalArticles / limit),
+                hasPrevPage: page > 1,
+            },
+        });
     }
     catch (error) {
-        console.error('Error fetching articles:', error);
+        logger_1.default.error('Error fetching articles', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -49,14 +97,28 @@ exports.getAllArticles = getAllArticles;
 const getArticleBySlug = async (req, res) => {
     try {
         const { slug } = req.params;
-        const article = await Article_1.default.findOne({ slug });
+        const article = await Article_1.default.findOne({
+            slug,
+            status: Article_1.ArticleStatus.PUBLISHED
+        }).populate('author', 'username');
         if (!article) {
             return res.status(404).json({ message: 'Article not found' });
         }
+        article.viewCount += 1;
+        await article.save();
+        logger_1.default.info('Article viewed', {
+            articleId: article._id,
+            slug: article.slug,
+            viewCount: article.viewCount,
+            title: article.title
+        });
         res.json(article);
     }
     catch (error) {
-        console.error('Error fetching article by slug:', error);
+        logger_1.default.error('Error fetching article by slug', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            slug: req.params.slug
+        });
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -64,14 +126,42 @@ exports.getArticleBySlug = getArticleBySlug;
 const getArticlesByCategory = async (req, res) => {
     try {
         const { category } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
         if (!Object.values(Article_1.Category).includes(category)) {
             return res.status(400).json({ message: 'Invalid category' });
         }
-        const articles = await Article_1.default.find({ category }).sort({ createdAt: -1 });
-        res.json(articles);
+        const [articles, totalArticles] = await Promise.all([
+            Article_1.default.find({
+                category,
+                status: Article_1.ArticleStatus.PUBLISHED
+            })
+                .populate('author', 'username')
+                .sort({ publishedAt: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Article_1.default.countDocuments({
+                category,
+                status: Article_1.ArticleStatus.PUBLISHED
+            }),
+        ]);
+        res.json({
+            articles,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalArticles / limit),
+                totalArticles,
+                hasNextPage: page < Math.ceil(totalArticles / limit),
+                hasPrevPage: page > 1,
+            },
+        });
     }
     catch (error) {
-        console.error('Error fetching articles by category:', error);
+        logger_1.default.error('Error fetching articles by category', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            category: req.params.category
+        });
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -99,7 +189,10 @@ const searchArticles = async (req, res) => {
 exports.searchArticles = searchArticles;
 const createArticle = async (req, res) => {
     try {
-        const { title, description, content, category, slug, imageUrl } = req.body;
+        const { title, description, content, category, slug, imageUrl, tags = [], status = Article_1.ArticleStatus.DRAFT } = req.body;
+        if (!req.user?.userId) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
         const existingArticle = await Article_1.default.findOne({ slug });
         if (existingArticle) {
             return res.status(400).json({ message: 'Article with this slug already exists' });
@@ -111,12 +204,27 @@ const createArticle = async (req, res) => {
             category,
             slug,
             imageUrl,
+            tags,
+            status,
+            author: req.user.userId,
         });
         await article.save();
-        res.status(201).json(article);
+        const populatedArticle = await Article_1.default.findById(article._id)
+            .populate('author', 'username');
+        logger_1.default.info('Article created', {
+            articleId: article._id,
+            authorId: req.user.userId,
+            title: article.title,
+            status: article.status,
+            category: article.category
+        });
+        res.status(201).json(populatedArticle);
     }
     catch (error) {
-        console.error('Error creating article:', error);
+        logger_1.default.error('Error creating article', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            authorId: req.user?.userId
+        });
         if (error.name === 'ValidationError') {
             return res.status(400).json({ message: 'Validation error', error: error.message });
         }

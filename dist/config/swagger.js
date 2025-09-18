@@ -11,7 +11,7 @@ const options = {
         openapi: '3.0.0',
         info: {
             title: 'CodingInfo API',
-            version: '1.2.2',
+            version: '1.3.0',
             description: 'API documentation for CodingInfo - Programming Learning Platform',
             contact: {
                 name: 'CodingInfo Team',
@@ -39,7 +39,7 @@ const options = {
             schemas: {
                 Article: {
                     type: 'object',
-                    required: ['title', 'description', 'content', 'category', 'slug'],
+                    required: ['title', 'description', 'content', 'category', 'slug', 'author'],
                     properties: {
                         _id: {
                             type: 'string',
@@ -72,6 +72,34 @@ const options = {
                             type: 'string',
                             maxLength: 100,
                             description: 'URL-friendly article identifier',
+                        },
+                        status: {
+                            type: 'string',
+                            enum: ['draft', 'published', 'archived'],
+                            default: 'draft',
+                            description: 'Article publication status',
+                        },
+                        author: {
+                            type: 'string',
+                            description: 'Author ID reference',
+                        },
+                        tags: {
+                            type: 'array',
+                            items: {
+                                type: 'string',
+                                maxLength: 50,
+                            },
+                            description: 'Article tags',
+                        },
+                        viewCount: {
+                            type: 'number',
+                            default: 0,
+                            description: 'Article view count',
+                        },
+                        publishedAt: {
+                            type: 'string',
+                            format: 'date-time',
+                            description: 'Article publication timestamp',
                         },
                         imageUrl: {
                             type: 'string',
