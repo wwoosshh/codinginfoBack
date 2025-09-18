@@ -12,6 +12,7 @@ import { globalErrorHandler, notFoundHandler } from './utils/errorHandler';
 import { requestLogger } from './utils/logger';
 import articleRoutes from './routes/articles';
 import authRoutes from './routes/auth';
+import adminRoutes from './routes/admin';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -54,6 +55,7 @@ setupSwagger(app);
 
 app.use('/api/articles', articleRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/health', async (req, res) => {
   try {

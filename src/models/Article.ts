@@ -18,6 +18,12 @@ export const CategoryDisplayNames = {
   [Category.DATA_STRUCTURE]: '자료구조',
 };
 
+export enum ArticleStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived',
+}
+
 export interface IArticle extends Document {
   title: string;
   description: string;
@@ -25,7 +31,12 @@ export interface IArticle extends Document {
   category: Category;
   categoryDisplayName: string;
   slug: string;
+  status: ArticleStatus;
+  author: mongoose.Types.ObjectId;
   imageUrl?: string;
+  tags: string[];
+  viewCount: number;
+  publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +75,28 @@ const ArticleSchema: Schema = new Schema(
       trim: true,
       maxlength: [100, 'Slug cannot be more than 100 characters'],
     },
+    status: {
+      type: String,
+      enum: Object.values(ArticleStatus),
+      default: ArticleStatus.DRAFT,
+    },
+    author: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Author is required'],
+    },
+    tags: [{
+      type: String,
+      trim: true,
+      maxlength: [50, 'Tag cannot be more than 50 characters'],
+    }],
+    viewCount: {
+      type: Number,
+      default: 0,
+    },
+    publishedAt: {
+      type: Date,
+    },
     imageUrl: {
       type: String,
       trim: true,
@@ -79,11 +112,23 @@ ArticleSchema.pre('save', function (next) {
   if (this.isModified('category')) {
     this.categoryDisplayName = CategoryDisplayNames[this.category as Category];
   }
+
+  if (this.isModified('status')) {
+    if (this.status === ArticleStatus.PUBLISHED && !this.publishedAt) {
+      this.publishedAt = new Date();
+    }
+  }
+
   next();
 });
 
 ArticleSchema.index({ title: 'text', description: 'text', content: 'text' });
 ArticleSchema.index({ category: 1 });
+ArticleSchema.index({ status: 1 });
+ArticleSchema.index({ author: 1 });
+ArticleSchema.index({ tags: 1 });
 ArticleSchema.index({ createdAt: -1 });
+ArticleSchema.index({ publishedAt: -1 });
+ArticleSchema.index({ viewCount: -1 });
 
 export default mongoose.model<IArticle>('Article', ArticleSchema);
