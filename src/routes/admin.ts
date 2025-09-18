@@ -8,8 +8,20 @@ import {
   getAllArticlesAdmin,
   updateArticleStatus,
   deleteArticleAdmin,
+  createArticle,
+  updateArticle,
+  getArticleById,
   getSystemHealth,
 } from '../controllers/adminController';
+
+import {
+  getAllCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getCategoryById,
+  getCategoryStats,
+} from '../controllers/categoryController';
 
 const router = express.Router();
 
@@ -30,8 +42,18 @@ router.patch('/users/:id/status', updateUserStatus);
 router.delete('/users/:id', deleteUser);
 
 router.get('/articles', getAllArticlesAdmin);
+router.post('/articles', createArticle);
+router.get('/articles/:id', getArticleById);
+router.put('/articles/:id', updateArticle);
 router.patch('/articles/:id/status', updateArticleStatus);
 router.delete('/articles/:id', deleteArticleAdmin);
+
+router.get('/categories', getAllCategories);
+router.post('/categories', createCategory);
+router.get('/categories/stats', getCategoryStats);
+router.get('/categories/:id', getCategoryById);
+router.put('/categories/:id', updateCategory);
+router.delete('/categories/:id', deleteCategory);
 
 router.get('/system/health', getSystemHealth);
 

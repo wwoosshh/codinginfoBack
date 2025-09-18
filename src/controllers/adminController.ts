@@ -375,6 +375,153 @@ export const deleteArticleAdmin = async (req: Request, res: Response) => {
   }
 };
 
+export const createArticle = async (req: Request, res: Response) => {
+  try {
+    const { title, description, content, category, status, tags, imageUrl, slug } = req.body;
+
+    if (!title || !description || !content || !category) {
+      return res.status(400).json({
+        message: 'Title, description, content, and category are required'
+      });
+    }
+
+    // Check if slug already exists
+    if (slug) {
+      const existingArticle = await Article.findOne({ slug });
+      if (existingArticle) {
+        return res.status(400).json({ message: 'Slug already exists' });
+      }
+    }
+
+    const articleData: any = {
+      title,
+      description,
+      content,
+      category,
+      author: req.user?.userId,
+      status: status || ArticleStatus.DRAFT,
+      tags: tags || [],
+      slug: slug || title.toLowerCase().replace(/[^a-z0-9가-힣\s-]/g, '').replace(/\s+/g, '-').trim()
+    };
+
+    if (imageUrl) {
+      articleData.imageUrl = imageUrl;
+    }
+
+    const article = new Article(articleData);
+    await article.save();
+
+    const populatedArticle = await Article.findById(article._id).populate('author', 'username email');
+
+    logger.info('Article created by admin', {
+      adminId: req.user?.userId,
+      articleId: article._id,
+      articleTitle: article.title,
+      status: article.status
+    });
+
+    res.status(201).json({
+      message: 'Article created successfully',
+      article: populatedArticle
+    });
+  } catch (error) {
+    logger.error('Error creating article', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId,
+      body: req.body
+    });
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const updateArticle = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, description, content, category, status, tags, imageUrl, slug } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid article ID' });
+    }
+
+    const article = await Article.findById(id);
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    // Check if slug already exists (exclude current article)
+    if (slug && slug !== article.slug) {
+      const existingArticle = await Article.findOne({ slug, _id: { $ne: id } });
+      if (existingArticle) {
+        return res.status(400).json({ message: 'Slug already exists' });
+      }
+    }
+
+    // Update fields
+    if (title) article.title = title;
+    if (description) article.description = description;
+    if (content) article.content = content;
+    if (category) article.category = category;
+    if (status) article.status = status;
+    if (tags !== undefined) article.tags = tags;
+    if (imageUrl !== undefined) article.imageUrl = imageUrl;
+    if (slug) article.slug = slug;
+
+    await article.save();
+
+    const populatedArticle = await Article.findById(article._id).populate('author', 'username email');
+
+    logger.info('Article updated by admin', {
+      adminId: req.user?.userId,
+      articleId: id,
+      articleTitle: article.title,
+      changes: req.body
+    });
+
+    res.json({
+      message: 'Article updated successfully',
+      article: populatedArticle
+    });
+  } catch (error) {
+    logger.error('Error updating article', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId,
+      articleId: req.params.id,
+      body: req.body
+    });
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getArticleById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid article ID' });
+    }
+
+    const article = await Article.findById(id).populate('author', 'username email');
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    logger.info('Article retrieved by admin', {
+      adminId: req.user?.userId,
+      articleId: id,
+      articleTitle: article.title
+    });
+
+    res.json(article);
+  } catch (error) {
+    logger.error('Error fetching article', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId,
+      articleId: req.params.id
+    });
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 export const getSystemHealth = async (req: Request, res: Response) => {
   try {
     const dbState = mongoose.connection.readyState;
