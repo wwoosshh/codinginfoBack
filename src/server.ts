@@ -93,8 +93,26 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Remove problematic dynamic imports temporarily
-// These will be re-added after fixing the SIGTERM issue
+// Temporary endpoint to view all articles (including legacy ones)
+app.get('/temp/all-articles', async (req, res) => {
+  try {
+    const Article = (await import('./models/Article')).default;
+    const allArticles = await Article.find({});
+    res.json({
+      count: allArticles.length,
+      articles: allArticles.map(a => ({
+        _id: a._id,
+        title: a.title,
+        slug: a.slug,
+        status: a.status || 'NO_STATUS',
+        author: a.author || 'NO_AUTHOR',
+        createdAt: a.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch articles', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
 
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
