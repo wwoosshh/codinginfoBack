@@ -114,6 +114,35 @@ app.get('/temp/all-articles', async (req, res) => {
   }
 });
 
+// Temporary endpoint to view all users
+app.get('/temp/all-users', async (req, res) => {
+  try {
+    const User = (await import('./models/User')).default;
+    const allUsers = await User.find({}).select('-password');
+    res.json({
+      count: allUsers.length,
+      users: allUsers
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch users', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
+// Temporary endpoint to delete all articles
+app.delete('/temp/delete-all-articles', async (req, res) => {
+  try {
+    const Article = (await import('./models/Article')).default;
+    const result = await Article.deleteMany({});
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `Deleted ${result.deletedCount} articles`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete articles', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
