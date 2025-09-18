@@ -66,7 +66,7 @@ const ArticleSchema: Schema = new Schema(
     },
     categoryDisplayName: {
       type: String,
-      required: true,
+      required: false, // pre-save 미들웨어에서 자동 설정
     },
     slug: {
       type: String,
