@@ -93,6 +93,34 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Debug endpoint for database investigation
+app.get('/debug/articles', async (req, res) => {
+  try {
+    const { debugArticles } = await import('./scripts/debugArticles');
+    const result = await debugArticles();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Debug failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Migration endpoint for updating existing articles
+app.post('/migrate/articles', async (req, res) => {
+  try {
+    const { migrateArticles } = await import('./scripts/migrateArticles');
+    const result = await migrateArticles();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Migration failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
