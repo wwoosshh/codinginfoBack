@@ -143,6 +143,31 @@ app.delete('/temp/delete-all-articles', async (req, res) => {
   }
 });
 
+// Temporary endpoint to make user admin
+app.post('/temp/make-admin/:email', async (req, res) => {
+  try {
+    const User = (await import('./models/User')).default;
+    const { email } = req.params;
+    const user = await User.findOneAndUpdate(
+      { email },
+      { role: 'admin' },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      message: `User ${email} is now admin`,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to make admin', message: error instanceof Error ? error.message : 'Unknown error' });
+  }
+});
+
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
