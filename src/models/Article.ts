@@ -1,23 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export enum Category {
-  OVERFLOW = 'OVERFLOW',
-  GAME_DEVELOPMENT = 'GAME_DEVELOPMENT',
-  GRAPHICS = 'GRAPHICS',
-  ALGORITHM = 'ALGORITHM',
-  WEB_DEVELOPMENT = 'WEB_DEVELOPMENT',
-  DATA_STRUCTURE = 'DATA_STRUCTURE',
-}
-
-export const CategoryDisplayNames = {
-  [Category.OVERFLOW]: '오버플로우',
-  [Category.GAME_DEVELOPMENT]: '게임 개발',
-  [Category.GRAPHICS]: '그래픽스',
-  [Category.ALGORITHM]: '알고리즘',
-  [Category.WEB_DEVELOPMENT]: '웹 개발',
-  [Category.DATA_STRUCTURE]: '자료구조',
-};
-
 export enum ArticleStatus {
   DRAFT = 'draft',
   PUBLISHED = 'published',
@@ -28,8 +10,7 @@ export interface IArticle extends Document {
   title: string;
   description: string;
   content: string;
-  category: Category;
-  categoryDisplayName: string;
+  category: string; // 카테고리 키 (예: 'ALGORITHM', 'WEB_DEVELOPMENT')
   slug: string;
   status: ArticleStatus;
   author: mongoose.Types.ObjectId;
@@ -62,11 +43,8 @@ const ArticleSchema: Schema = new Schema(
     category: {
       type: String,
       required: [true, 'Category is required'],
-      enum: Object.values(Category),
-    },
-    categoryDisplayName: {
-      type: String,
-      required: false, // pre-save 미들웨어에서 자동 설정
+      trim: true,
+      uppercase: true,
     },
     slug: {
       type: String,
@@ -109,10 +87,6 @@ const ArticleSchema: Schema = new Schema(
 );
 
 ArticleSchema.pre('save', function (next) {
-  if (this.isModified('category')) {
-    this.categoryDisplayName = CategoryDisplayNames[this.category as Category];
-  }
-
   if (this.isModified('status')) {
     if (this.status === ArticleStatus.PUBLISHED && !this.publishedAt) {
       this.publishedAt = new Date();

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import Article, { Category, ArticleStatus } from '../models/Article';
+import Article, { ArticleStatus } from '../models/Article';
+import Category from '../models/Category';
 import logger from '../utils/logger';
 import mongoose from 'mongoose';
 
@@ -22,8 +23,12 @@ export const getAllArticles = async (req: Request, res: Response) => {
       ];
     }
 
-    if (category && Object.values(Category).includes(category as Category)) {
-      query.category = category;
+    if (category) {
+      // 카테고리가 존재하는지 확인
+      const categoryExists = await Category.findOne({ key: category.toUpperCase(), isActive: true });
+      if (categoryExists) {
+        query.category = category.toUpperCase();
+      }
     }
 
     if (tags) {
@@ -31,14 +36,35 @@ export const getAllArticles = async (req: Request, res: Response) => {
       query.tags = { $in: tagArray };
     }
 
-    const [articles, totalArticles] = await Promise.all([
+    const [articles, totalArticles, categories] = await Promise.all([
       Article.find(query)
         .populate('author', 'username')
         .sort({ publishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit),
       Article.countDocuments(query),
+      Category.find({ isActive: true })
     ]);
+
+    // 카테고리 정보를 맵으로 변환
+    const categoryMap = new Map();
+    categories.forEach(cat => {
+      categoryMap.set(cat.key, {
+        displayName: cat.displayName,
+        color: cat.color
+      });
+    });
+
+    // 아티클에 카테고리 정보 추가
+    const articlesWithCategory = articles.map(article => {
+      const articleObj = article.toObject();
+      const categoryInfo = categoryMap.get(articleObj.category);
+      return {
+        ...articleObj,
+        categoryDisplayName: categoryInfo?.displayName || articleObj.category,
+        categoryColor: categoryInfo?.color || '#6b7280'
+      };
+    });
 
     logger.info('Articles fetched', {
       page,
@@ -48,7 +74,7 @@ export const getAllArticles = async (req: Request, res: Response) => {
     });
 
     res.json({
-      articles,
+      articles: articlesWithCategory,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalArticles / limit),
@@ -68,17 +94,29 @@ export const getAllArticles = async (req: Request, res: Response) => {
 export const getArticleBySlug = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
-    const article = await Article.findOne({
-      slug,
-      status: ArticleStatus.PUBLISHED
-    }).populate('author', 'username');
+    const [article, category] = await Promise.all([
+      Article.findOne({
+        slug,
+        status: ArticleStatus.PUBLISHED
+      }).populate('author', 'username'),
+      Category.findOne({ key: slug.split('-')[0]?.toUpperCase(), isActive: true })
+    ]);
 
     if (!article) {
       return res.status(404).json({ message: 'Article not found' });
     }
 
+    // 카테고리 정보 추가
+    const categoryInfo = await Category.findOne({ key: article.category, isActive: true });
+
     article.viewCount += 1;
     await article.save();
+
+    const articleWithCategory = {
+      ...article.toObject(),
+      categoryDisplayName: categoryInfo?.displayName || article.category,
+      categoryColor: categoryInfo?.color || '#6b7280'
+    };
 
     logger.info('Article viewed', {
       articleId: article._id,
@@ -87,7 +125,7 @@ export const getArticleBySlug = async (req: Request, res: Response) => {
       title: article.title
     });
 
-    res.json(article);
+    res.json(articleWithCategory);
   } catch (error) {
     logger.error('Error fetching article by slug', {
       error: error instanceof Error ? error.message : 'Unknown error',

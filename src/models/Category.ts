@@ -16,7 +16,6 @@ const CategorySchema: Schema = new Schema(
     key: {
       type: String,
       required: [true, 'Category key is required'],
-      unique: true,
       uppercase: true,
       trim: true,
       maxlength: [50, 'Category key cannot be more than 50 characters'],
@@ -54,7 +53,7 @@ const CategorySchema: Schema = new Schema(
 );
 
 // Indexes
-CategorySchema.index({ key: 1 });
+CategorySchema.index({ key: 1 }, { unique: true });
 CategorySchema.index({ isActive: 1 });
 CategorySchema.index({ order: 1 });
 
