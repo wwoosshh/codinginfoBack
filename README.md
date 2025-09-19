@@ -38,7 +38,8 @@ npm run dev
 ### Public APIs
 - `GET /api/articles` - Get published articles (with pagination)
 - `GET /api/articles/search` - Search articles
-- `GET /api/articles/category/:category` - Get articles by category
+- `GET /api/articles?category=CATEGORY_KEY` - Get articles by category
+- `GET /api/categories` - Get all active categories
 - `GET /api/articles/:slug` - Get article by slug
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
@@ -83,6 +84,29 @@ CORS_ORIGIN=https://codinginfo.vercel.app
 ```
 
 ## 📈 Version History
+
+### v1.3.1 (2025-09-19) - Category System Integration
+**🔧 Major Fixes:**
+- ✅ Unified category system - replaced hardcoded enums with dynamic database categories
+- ✅ Fixed database index duplication warnings on Category model
+- ✅ Article model now uses string category keys instead of enum values
+- ✅ Added public `/api/categories` endpoint for frontend category fetching
+- ✅ Enhanced article responses to include category display names and colors
+- ✅ Frontend AdminArticleEditPage now uses dynamic categories from backend
+- ✅ Created migration script to convert existing data to new category system
+
+**🐛 Critical Bug Fixes:**
+- Fixed Mongoose duplicate index warnings
+- Resolved category mismatch between frontend hardcoded values and backend dynamic system
+- Ensured backward compatibility during transition period
+
+**📋 New API Endpoints:**
+- `GET /api/categories` - Public endpoint to fetch all active categories
+
+**🔄 Database Changes:**
+- Category model index optimization
+- Article category field changed from enum to string
+- Migration script for existing data conversion
 
 ### v1.3.0 (2025-09-18) - Week 2: Admin System
 **🎯 Major Features:**

@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSystemHealth = exports.deleteArticleAdmin = exports.updateArticleStatus = exports.getAllArticlesAdmin = exports.deleteUser = exports.updateUserStatus = exports.getAllUsers = exports.getDashboardStats = void 0;
+exports.getSystemHealth = exports.getArticleById = exports.updateArticle = exports.createArticle = exports.deleteArticleAdmin = exports.updateArticleStatus = exports.getAllArticlesAdmin = exports.deleteUser = exports.updateUserStatus = exports.getAllUsers = exports.getDashboardStats = void 0;
 const Article_1 = __importStar(require("../models/Article"));
 const User_1 = __importDefault(require("../models/User"));
 const logger_1 = __importDefault(require("../utils/logger"));
@@ -362,6 +362,141 @@ const deleteArticleAdmin = async (req, res) => {
     }
 };
 exports.deleteArticleAdmin = deleteArticleAdmin;
+const createArticle = async (req, res) => {
+    try {
+        const { title, description, content, category, status, tags, imageUrl, slug } = req.body;
+        if (!title || !description || !content || !category) {
+            return res.status(400).json({
+                message: 'Title, description, content, and category are required'
+            });
+        }
+        if (slug) {
+            const existingArticle = await Article_1.default.findOne({ slug });
+            if (existingArticle) {
+                return res.status(400).json({ message: 'Slug already exists' });
+            }
+        }
+        const articleData = {
+            title,
+            description,
+            content,
+            category,
+            author: req.user?.userId,
+            status: status || Article_1.ArticleStatus.DRAFT,
+            tags: tags || [],
+            slug: slug || title.toLowerCase().replace(/[^a-z0-9가-힣\s-]/g, '').replace(/\s+/g, '-').trim()
+        };
+        if (imageUrl) {
+            articleData.imageUrl = imageUrl;
+        }
+        const article = new Article_1.default(articleData);
+        await article.save();
+        const populatedArticle = await Article_1.default.findById(article._id).populate('author', 'username email');
+        logger_1.default.info('Article created by admin', {
+            adminId: req.user?.userId,
+            articleId: article._id,
+            articleTitle: article.title,
+            status: article.status
+        });
+        res.status(201).json({
+            message: 'Article created successfully',
+            article: populatedArticle
+        });
+    }
+    catch (error) {
+        logger_1.default.error('Error creating article', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            adminId: req.user?.userId,
+            body: req.body
+        });
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+exports.createArticle = createArticle;
+const updateArticle = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, description, content, category, status, tags, imageUrl, slug } = req.body;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid article ID' });
+        }
+        const article = await Article_1.default.findById(id);
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
+        if (slug && slug !== article.slug) {
+            const existingArticle = await Article_1.default.findOne({ slug, _id: { $ne: id } });
+            if (existingArticle) {
+                return res.status(400).json({ message: 'Slug already exists' });
+            }
+        }
+        if (title)
+            article.title = title;
+        if (description)
+            article.description = description;
+        if (content)
+            article.content = content;
+        if (category)
+            article.category = category;
+        if (status)
+            article.status = status;
+        if (tags !== undefined)
+            article.tags = tags;
+        if (imageUrl !== undefined)
+            article.imageUrl = imageUrl;
+        if (slug)
+            article.slug = slug;
+        await article.save();
+        const populatedArticle = await Article_1.default.findById(article._id).populate('author', 'username email');
+        logger_1.default.info('Article updated by admin', {
+            adminId: req.user?.userId,
+            articleId: id,
+            articleTitle: article.title,
+            changes: req.body
+        });
+        res.json({
+            message: 'Article updated successfully',
+            article: populatedArticle
+        });
+    }
+    catch (error) {
+        logger_1.default.error('Error updating article', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            adminId: req.user?.userId,
+            articleId: req.params.id,
+            body: req.body
+        });
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+exports.updateArticle = updateArticle;
+const getArticleById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid article ID' });
+        }
+        const article = await Article_1.default.findById(id).populate('author', 'username email');
+        if (!article) {
+            return res.status(404).json({ message: 'Article not found' });
+        }
+        logger_1.default.info('Article retrieved by admin', {
+            adminId: req.user?.userId,
+            articleId: id,
+            articleTitle: article.title
+        });
+        res.json(article);
+    }
+    catch (error) {
+        logger_1.default.error('Error fetching article', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            adminId: req.user?.userId,
+            articleId: req.params.id
+        });
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+exports.getArticleById = getArticleById;
 const getSystemHealth = async (req, res) => {
     try {
         const dbState = mongoose_1.default.connection.readyState;

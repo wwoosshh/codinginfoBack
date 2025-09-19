@@ -1,44 +1,11 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const supertest_1 = __importDefault(require("supertest"));
 const express_1 = __importDefault(require("express"));
-const Article_1 = __importStar(require("../models/Article"));
+const Article_1 = __importDefault(require("../models/Article"));
 const articles_1 = __importDefault(require("../routes/articles"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -56,7 +23,7 @@ describe('Article API', () => {
                 title: 'Test Article',
                 description: 'Test Description',
                 content: 'Test Content',
-                category: Article_1.Category.OVERFLOW,
+                category: 'OVERFLOW',
                 slug: 'test-article',
             });
             await testArticle.save();
@@ -79,7 +46,7 @@ describe('Article API', () => {
                 title: 'Test Article',
                 description: 'Test Description',
                 content: 'Test Content',
-                category: Article_1.Category.OVERFLOW,
+                category: 'OVERFLOW',
                 slug: 'test-article',
             });
             await testArticle.save();
@@ -102,14 +69,14 @@ describe('Article API', () => {
                 title: 'Overflow Article',
                 description: 'Test Description',
                 content: 'Test Content',
-                category: Article_1.Category.OVERFLOW,
+                category: 'OVERFLOW',
                 slug: 'overflow-article',
             });
             const article2 = new Article_1.default({
                 title: 'Graphics Article',
                 description: 'Test Description',
                 content: 'Test Content',
-                category: Article_1.Category.GRAPHICS,
+                category: 'GRAPHICS',
                 slug: 'graphics-article',
             });
             await article1.save();
@@ -118,7 +85,7 @@ describe('Article API', () => {
                 .get('/api/articles/category/OVERFLOW')
                 .expect(200);
             expect(response.body).toHaveLength(1);
-            expect(response.body[0].category).toBe(Article_1.Category.OVERFLOW);
+            expect(response.body[0].category).toBe('OVERFLOW');
         });
     });
     describe('GET /api/articles/search', () => {
@@ -133,7 +100,7 @@ describe('Article API', () => {
                 title: 'JavaScript Overflow',
                 description: 'Learn about overflow in JavaScript',
                 content: 'This is about JavaScript overflow issues',
-                category: Article_1.Category.OVERFLOW,
+                category: 'OVERFLOW',
                 slug: 'javascript-overflow',
             });
             await testArticle.save();

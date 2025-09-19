@@ -142,13 +142,15 @@ export const getArticlesByCategory = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    if (!Object.values(Category).includes(category as Category)) {
+    // 카테고리가 존재하는지 확인
+    const categoryExists = await Category.findOne({ key: category.toUpperCase(), isActive: true });
+    if (!categoryExists) {
       return res.status(400).json({ message: 'Invalid category' });
     }
 
-    const [articles, totalArticles] = await Promise.all([
+    const [articles, totalArticles, categories] = await Promise.all([
       Article.find({
-        category,
+        category: category.toUpperCase(),
         status: ArticleStatus.PUBLISHED
       })
         .populate('author', 'username')
@@ -156,13 +158,34 @@ export const getArticlesByCategory = async (req: Request, res: Response) => {
         .skip(skip)
         .limit(limit),
       Article.countDocuments({
-        category,
+        category: category.toUpperCase(),
         status: ArticleStatus.PUBLISHED
       }),
+      Category.find({ isActive: true })
     ]);
 
+    // 카테고리 정보를 맵으로 변환
+    const categoryMap = new Map();
+    categories.forEach(cat => {
+      categoryMap.set(cat.key, {
+        displayName: cat.displayName,
+        color: cat.color
+      });
+    });
+
+    // 아티클에 카테고리 정보 추가
+    const articlesWithCategory = articles.map(article => {
+      const articleObj = article.toObject();
+      const categoryInfo = categoryMap.get(articleObj.category);
+      return {
+        ...articleObj,
+        categoryDisplayName: categoryInfo?.displayName || articleObj.category,
+        categoryColor: categoryInfo?.color || '#6b7280'
+      };
+    });
+
     res.json({
-      articles,
+      articles: articlesWithCategory,
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalArticles / limit),

@@ -1,7 +1,8 @@
 import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
-import Article, { Category } from '../models/Article';
+import Article from '../models/Article';
+import Category from '../models/Category';
 import articleRoutes from '../routes/articles';
 
 const app = express();
@@ -24,7 +25,7 @@ describe('Article API', () => {
         title: 'Test Article',
         description: 'Test Description',
         content: 'Test Content',
-        category: Category.OVERFLOW,
+        category: 'OVERFLOW',
         slug: 'test-article',
       });
       await testArticle.save();
@@ -53,7 +54,7 @@ describe('Article API', () => {
         title: 'Test Article',
         description: 'Test Description',
         content: 'Test Content',
-        category: Category.OVERFLOW,
+        category: 'OVERFLOW',
         slug: 'test-article',
       });
       await testArticle.save();
@@ -82,7 +83,7 @@ describe('Article API', () => {
         title: 'Overflow Article',
         description: 'Test Description',
         content: 'Test Content',
-        category: Category.OVERFLOW,
+        category: 'OVERFLOW',
         slug: 'overflow-article',
       });
 
@@ -90,7 +91,7 @@ describe('Article API', () => {
         title: 'Graphics Article',
         description: 'Test Description',
         content: 'Test Content',
-        category: Category.GRAPHICS,
+        category: 'GRAPHICS',
         slug: 'graphics-article',
       });
 
@@ -102,7 +103,7 @@ describe('Article API', () => {
         .expect(200);
 
       expect(response.body).toHaveLength(1);
-      expect(response.body[0].category).toBe(Category.OVERFLOW);
+      expect(response.body[0].category).toBe('OVERFLOW');
     });
   });
 
@@ -121,7 +122,7 @@ describe('Article API', () => {
         title: 'JavaScript Overflow',
         description: 'Learn about overflow in JavaScript',
         content: 'This is about JavaScript overflow issues',
-        category: Category.OVERFLOW,
+        category: 'OVERFLOW',
         slug: 'javascript-overflow',
       });
       await testArticle.save();

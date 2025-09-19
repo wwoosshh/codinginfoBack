@@ -33,25 +33,8 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ArticleStatus = exports.CategoryDisplayNames = exports.Category = void 0;
+exports.ArticleStatus = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-var Category;
-(function (Category) {
-    Category["OVERFLOW"] = "OVERFLOW";
-    Category["GAME_DEVELOPMENT"] = "GAME_DEVELOPMENT";
-    Category["GRAPHICS"] = "GRAPHICS";
-    Category["ALGORITHM"] = "ALGORITHM";
-    Category["WEB_DEVELOPMENT"] = "WEB_DEVELOPMENT";
-    Category["DATA_STRUCTURE"] = "DATA_STRUCTURE";
-})(Category || (exports.Category = Category = {}));
-exports.CategoryDisplayNames = {
-    [Category.OVERFLOW]: '오버플로우',
-    [Category.GAME_DEVELOPMENT]: '게임 개발',
-    [Category.GRAPHICS]: '그래픽스',
-    [Category.ALGORITHM]: '알고리즘',
-    [Category.WEB_DEVELOPMENT]: '웹 개발',
-    [Category.DATA_STRUCTURE]: '자료구조',
-};
 var ArticleStatus;
 (function (ArticleStatus) {
     ArticleStatus["DRAFT"] = "draft";
@@ -78,11 +61,8 @@ const ArticleSchema = new mongoose_1.Schema({
     category: {
         type: String,
         required: [true, 'Category is required'],
-        enum: Object.values(Category),
-    },
-    categoryDisplayName: {
-        type: String,
-        required: true,
+        trim: true,
+        uppercase: true,
     },
     slug: {
         type: String,
@@ -99,7 +79,7 @@ const ArticleSchema = new mongoose_1.Schema({
     author: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        required: false,
+        required: [true, 'Author is required'],
     },
     tags: [{
             type: String,
@@ -122,9 +102,6 @@ const ArticleSchema = new mongoose_1.Schema({
     timestamps: true,
 });
 ArticleSchema.pre('save', function (next) {
-    if (this.isModified('category')) {
-        this.categoryDisplayName = exports.CategoryDisplayNames[this.category];
-    }
     if (this.isModified('status')) {
         if (this.status === ArticleStatus.PUBLISHED && !this.publishedAt) {
             this.publishedAt = new Date();

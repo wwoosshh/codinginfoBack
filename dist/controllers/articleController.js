@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteArticle = exports.updateArticle = exports.createArticle = exports.searchArticles = exports.getArticlesByCategory = exports.getArticleBySlug = exports.getAllArticles = void 0;
 const Article_1 = __importStar(require("../models/Article"));
+const Category_1 = __importDefault(require("../models/Category"));
 const logger_1 = __importDefault(require("../utils/logger"));
 const getAllArticles = async (req, res) => {
     try {
@@ -54,21 +55,41 @@ const getAllArticles = async (req, res) => {
                 { description: { $regex: search, $options: 'i' } },
             ];
         }
-        if (category && Object.values(Article_1.Category).includes(category)) {
-            query.category = category;
+        if (category) {
+            const categoryExists = await Category_1.default.findOne({ key: category.toUpperCase(), isActive: true });
+            if (categoryExists) {
+                query.category = category.toUpperCase();
+            }
         }
         if (tags) {
             const tagArray = tags.split(',').map(tag => tag.trim());
             query.tags = { $in: tagArray };
         }
-        const [articles, totalArticles] = await Promise.all([
+        const [articles, totalArticles, categories] = await Promise.all([
             Article_1.default.find(query)
                 .populate('author', 'username')
                 .sort({ publishedAt: -1, createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
             Article_1.default.countDocuments(query),
+            Category_1.default.find({ isActive: true })
         ]);
+        const categoryMap = new Map();
+        categories.forEach(cat => {
+            categoryMap.set(cat.key, {
+                displayName: cat.displayName,
+                color: cat.color
+            });
+        });
+        const articlesWithCategory = articles.map(article => {
+            const articleObj = article.toObject();
+            const categoryInfo = categoryMap.get(articleObj.category);
+            return {
+                ...articleObj,
+                categoryDisplayName: categoryInfo?.displayName || articleObj.category,
+                categoryColor: categoryInfo?.color || '#6b7280'
+            };
+        });
         logger_1.default.info('Articles fetched', {
             page,
             limit,
@@ -76,7 +97,7 @@ const getAllArticles = async (req, res) => {
             query: { ...query, author: undefined }
         });
         res.json({
-            articles,
+            articles: articlesWithCategory,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalArticles / limit),
@@ -97,22 +118,31 @@ exports.getAllArticles = getAllArticles;
 const getArticleBySlug = async (req, res) => {
     try {
         const { slug } = req.params;
-        const article = await Article_1.default.findOne({
-            slug,
-            status: Article_1.ArticleStatus.PUBLISHED
-        }).populate('author', 'username');
+        const [article, category] = await Promise.all([
+            Article_1.default.findOne({
+                slug,
+                status: Article_1.ArticleStatus.PUBLISHED
+            }).populate('author', 'username'),
+            Category_1.default.findOne({ key: slug.split('-')[0]?.toUpperCase(), isActive: true })
+        ]);
         if (!article) {
             return res.status(404).json({ message: 'Article not found' });
         }
+        const categoryInfo = await Category_1.default.findOne({ key: article.category, isActive: true });
         article.viewCount += 1;
         await article.save();
+        const articleWithCategory = {
+            ...article.toObject(),
+            categoryDisplayName: categoryInfo?.displayName || article.category,
+            categoryColor: categoryInfo?.color || '#6b7280'
+        };
         logger_1.default.info('Article viewed', {
             articleId: article._id,
             slug: article.slug,
             viewCount: article.viewCount,
             title: article.title
         });
-        res.json(article);
+        res.json(articleWithCategory);
     }
     catch (error) {
         logger_1.default.error('Error fetching article by slug', {
@@ -129,12 +159,13 @@ const getArticlesByCategory = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
-        if (!Object.values(Article_1.Category).includes(category)) {
+        const categoryExists = await Category_1.default.findOne({ key: category.toUpperCase(), isActive: true });
+        if (!categoryExists) {
             return res.status(400).json({ message: 'Invalid category' });
         }
-        const [articles, totalArticles] = await Promise.all([
+        const [articles, totalArticles, categories] = await Promise.all([
             Article_1.default.find({
-                category,
+                category: category.toUpperCase(),
                 status: Article_1.ArticleStatus.PUBLISHED
             })
                 .populate('author', 'username')
@@ -142,12 +173,29 @@ const getArticlesByCategory = async (req, res) => {
                 .skip(skip)
                 .limit(limit),
             Article_1.default.countDocuments({
-                category,
+                category: category.toUpperCase(),
                 status: Article_1.ArticleStatus.PUBLISHED
             }),
+            Category_1.default.find({ isActive: true })
         ]);
+        const categoryMap = new Map();
+        categories.forEach(cat => {
+            categoryMap.set(cat.key, {
+                displayName: cat.displayName,
+                color: cat.color
+            });
+        });
+        const articlesWithCategory = articles.map(article => {
+            const articleObj = article.toObject();
+            const categoryInfo = categoryMap.get(articleObj.category);
+            return {
+                ...articleObj,
+                categoryDisplayName: categoryInfo?.displayName || articleObj.category,
+                categoryColor: categoryInfo?.color || '#6b7280'
+            };
+        });
         res.json({
-            articles,
+            articles: articlesWithCategory,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalArticles / limit),

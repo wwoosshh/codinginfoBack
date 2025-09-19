@@ -50,6 +50,7 @@ const logger_1 = require("./utils/logger");
 const articles_1 = __importDefault(require("./routes/articles"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const admin_1 = __importDefault(require("./routes/admin"));
+const categories_1 = __importDefault(require("./routes/categories"));
 const mongoose_1 = __importDefault(require("mongoose"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -86,6 +87,7 @@ app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/api/articles', articles_1.default);
 app.use('/api/auth', auth_1.default);
 app.use('/api/admin', admin_1.default);
+app.use('/api/categories', categories_1.default);
 app.get('/health', async (req, res) => {
     try {
         const dbStatus = mongoose_1.default.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -118,30 +120,69 @@ app.get('/health', async (req, res) => {
         });
     }
 });
-app.get('/debug/articles', async (req, res) => {
+app.get('/temp/all-articles', async (req, res) => {
     try {
-        const { debugArticles } = await Promise.resolve().then(() => __importStar(require('./scripts/debugArticles')));
-        const result = await debugArticles();
-        res.json(result);
+        const Article = (await Promise.resolve().then(() => __importStar(require('./models/Article')))).default;
+        const allArticles = await Article.find({});
+        res.json({
+            count: allArticles.length,
+            articles: allArticles.map(a => ({
+                _id: a._id,
+                title: a.title,
+                slug: a.slug,
+                status: a.status || 'NO_STATUS',
+                author: a.author || 'NO_AUTHOR',
+                createdAt: a.createdAt
+            }))
+        });
     }
     catch (error) {
-        res.status(500).json({
-            error: 'Debug failed',
-            message: error instanceof Error ? error.message : 'Unknown error'
-        });
+        res.status(500).json({ error: 'Failed to fetch articles', message: error instanceof Error ? error.message : 'Unknown error' });
     }
 });
-app.post('/migrate/articles', async (req, res) => {
+app.get('/temp/all-users', async (req, res) => {
     try {
-        const { migrateArticles } = await Promise.resolve().then(() => __importStar(require('./scripts/migrateArticles')));
-        const result = await migrateArticles();
-        res.json(result);
+        const User = (await Promise.resolve().then(() => __importStar(require('./models/User')))).default;
+        const allUsers = await User.find({}).select('-password');
+        res.json({
+            count: allUsers.length,
+            users: allUsers
+        });
     }
     catch (error) {
-        res.status(500).json({
-            error: 'Migration failed',
-            message: error instanceof Error ? error.message : 'Unknown error'
+        res.status(500).json({ error: 'Failed to fetch users', message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+});
+app.delete('/temp/delete-all-articles', async (req, res) => {
+    try {
+        const Article = (await Promise.resolve().then(() => __importStar(require('./models/Article')))).default;
+        const result = await Article.deleteMany({});
+        res.json({
+            success: true,
+            deletedCount: result.deletedCount,
+            message: `Deleted ${result.deletedCount} articles`
         });
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Failed to delete articles', message: error instanceof Error ? error.message : 'Unknown error' });
+    }
+});
+app.post('/temp/make-admin/:email', async (req, res) => {
+    try {
+        const User = (await Promise.resolve().then(() => __importStar(require('./models/User')))).default;
+        const { email } = req.params;
+        const user = await User.findOneAndUpdate({ email }, { role: 'admin' }, { new: true }).select('-password');
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({
+            success: true,
+            message: `User ${email} is now admin`,
+            user
+        });
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Failed to make admin', message: error instanceof Error ? error.message : 'Unknown error' });
     }
 });
 app.use(errorHandler_1.notFoundHandler);
