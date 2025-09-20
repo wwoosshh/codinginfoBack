@@ -241,12 +241,12 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
       });
 
       // 사용되지 않은 이미지만 필터링
-      images = images.filter(image => !usedImageUrls.has(image.url));
+      images = images.filter((image: any) => !usedImageUrls.has(image.url));
     }
 
     // 각 이미지에 대해 사용 현황 추가
     const imagesWithUsage = await Promise.all(
-      images.map(async (image) => {
+      images.map(async (image: any) => {
         const Article = (await import('../models/Article')).default;
 
         // 해당 이미지를 사용하는 아티클 찾기
