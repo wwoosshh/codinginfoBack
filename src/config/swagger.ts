@@ -19,10 +19,6 @@ const options = {
         url: 'https://codinginfoback-production.up.railway.app',
         description: 'Production server',
       },
-      {
-        url: 'http://localhost:5159',
-        description: 'Development server',
-      },
     ],
     components: {
       securitySchemes: {

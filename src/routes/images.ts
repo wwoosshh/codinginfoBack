@@ -178,6 +178,11 @@ router.post('/upload', authenticate, requireAdmin, upload.single('image'), async
  *           type: integer
  *           default: 20
  *         description: 페이지당 항목 수
+ *       - in: query
+ *         name: unused
+ *         schema:
+ *           type: boolean
+ *         description: 사용되지 않은 이미지만 조회
  *     responses:
  *       200:
  *         description: 이미지 목록 조회 성공
@@ -190,6 +195,7 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
+    const unused = req.query.unused === 'true';
     const maxResults = Math.min(limit, 100); // 최대 100개까지
 
     // Cloudinary에서 이미지 목록 조회
@@ -199,7 +205,7 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
       .max_results(maxResults)
       .execute();
 
-    const images = result.resources.map((resource: any) => ({
+    let images = result.resources.map((resource: any) => ({
       publicId: resource.public_id,
       url: resource.secure_url,
       filename: resource.filename || resource.public_id,
@@ -211,9 +217,58 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
       tags: resource.tags
     }));
 
+    // 사용되지 않은 이미지 필터링이 요청된 경우
+    if (unused) {
+      const Article = (await import('../models/Article')).default;
+
+      // 모든 아티클에서 이미지 URL 추출
+      const articles = await Article.find({}, 'content');
+      const usedImageUrls = new Set<string>();
+
+      articles.forEach(article => {
+        if (article.content) {
+          // 마크다운에서 이미지 URL 추출 (![](url) 형태)
+          const imageMatches = article.content.match(/!\[.*?\]\((.*?)\)/g);
+          if (imageMatches) {
+            imageMatches.forEach(match => {
+              const urlMatch = match.match(/!\[.*?\]\((.*?)\)/);
+              if (urlMatch && urlMatch[1]) {
+                usedImageUrls.add(urlMatch[1]);
+              }
+            });
+          }
+        }
+      });
+
+      // 사용되지 않은 이미지만 필터링
+      images = images.filter(image => !usedImageUrls.has(image.url));
+    }
+
+    // 각 이미지에 대해 사용 현황 추가
+    const imagesWithUsage = await Promise.all(
+      images.map(async (image) => {
+        const Article = (await import('../models/Article')).default;
+
+        // 해당 이미지를 사용하는 아티클 찾기
+        const articlesUsingImage = await Article.find(
+          { content: { $regex: image.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') } },
+          'title slug'
+        );
+
+        return {
+          ...image,
+          usageCount: articlesUsingImage.length,
+          usedInArticles: articlesUsingImage.map(article => ({
+            title: article.title,
+            slug: article.slug
+          }))
+        };
+      })
+    );
+
     res.json({
       success: true,
-      images,
+      images: imagesWithUsage,
       pagination: {
         currentPage: page,
         totalImages: result.total_count,
@@ -258,9 +313,44 @@ router.get('/', authenticate, requireAdmin, async (req, res) => {
 router.delete('/:publicId', authenticate, requireAdmin, async (req, res) => {
   try {
     const { publicId } = req.params;
+    const force = req.query.force === 'true'; // 강제 삭제 플래그
 
     // URL 디코딩 (슬래시 등이 인코딩되어 올 수 있음)
     const decodedPublicId = decodeURIComponent(publicId);
+
+    // 먼저 Cloudinary에서 이미지 정보 조회
+    const imageResource = await cloudinary.api.resource(decodedPublicId);
+    if (!imageResource) {
+      return res.status(404).json({
+        success: false,
+        error: '삭제할 이미지를 찾을 수 없습니다.'
+      });
+    }
+
+    const imageUrl = imageResource.secure_url;
+
+    // 강제 삭제가 아닌 경우, 이미지 사용 여부 확인
+    if (!force) {
+      const Article = (await import('../models/Article')).default;
+
+      // 해당 이미지를 사용하는 아티클 찾기
+      const articlesUsingImage = await Article.find(
+        { content: { $regex: imageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') } },
+        'title slug'
+      );
+
+      if (articlesUsingImage.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: '이미지가 아티클에서 사용 중입니다.',
+          usedInArticles: articlesUsingImage.map(article => ({
+            title: article.title,
+            slug: article.slug
+          })),
+          canForceDelete: true
+        });
+      }
+    }
 
     // Cloudinary에서 이미지 삭제
     const result = await cloudinary.uploader.destroy(decodedPublicId);
@@ -268,7 +358,9 @@ router.delete('/:publicId', authenticate, requireAdmin, async (req, res) => {
     if (result.result === 'ok') {
       logger.info('Image deleted successfully', {
         userId: req.user?.userId,
-        publicId: decodedPublicId
+        publicId: decodedPublicId,
+        imageUrl,
+        forced: force
       });
 
       res.json({

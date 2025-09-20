@@ -45,12 +45,14 @@ const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const database_1 = __importDefault(require("./config/database"));
 const swagger_1 = require("./config/swagger");
+const cloudinary_1 = require("./config/cloudinary");
 const errorHandler_1 = require("./utils/errorHandler");
 const logger_1 = require("./utils/logger");
 const articles_1 = __importDefault(require("./routes/articles"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const admin_1 = __importDefault(require("./routes/admin"));
 const categories_1 = __importDefault(require("./routes/categories"));
+const images_1 = __importDefault(require("./routes/images"));
 const mongoose_1 = __importDefault(require("mongoose"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -58,6 +60,7 @@ const PORT = parseInt(process.env.PORT || '5159', 10);
 const initializeServer = async () => {
     try {
         await (0, database_1.default)();
+        await (0, cloudinary_1.testCloudinaryConnection)();
         console.log('✅ Server initialization completed');
     }
     catch (error) {
@@ -88,6 +91,7 @@ app.use('/api/articles', articles_1.default);
 app.use('/api/auth', auth_1.default);
 app.use('/api/admin', admin_1.default);
 app.use('/api/categories', categories_1.default);
+app.use('/api/images', images_1.default);
 app.get('/health', async (req, res) => {
     try {
         const dbStatus = mongoose_1.default.connection.readyState === 1 ? 'connected' : 'disconnected';
@@ -101,7 +105,7 @@ app.get('/health', async (req, res) => {
         res.json({
             status: 'UP',
             timestamp: new Date().toISOString(),
-            version: '1.3.0',
+            version: '1.3.2',
             environment: process.env.NODE_ENV || 'development',
             uptime: process.uptime(),
             database: {

@@ -49,7 +49,7 @@ app.use(compression());
 app.use(morgan('combined'));
 app.use(requestLogger);
 app.use(cors({
-  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000'],
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://codinginfo.vercel.app'],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -180,7 +180,7 @@ app.use(globalErrorHandler);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📄 Health check: http://localhost:${PORT}/health`);
-  console.log(`🌐 External access: http://[YOUR_IP]:${PORT}/health`);
-  console.log(`🔗 Frontend should connect to: http://[YOUR_IP]:${PORT}`);
+  console.log(`📄 Health check: https://codinginfoback-production.up.railway.app/health`);
+  console.log(`🌐 API Documentation: https://codinginfoback-production.up.railway.app/api-docs`);
+  console.log(`🔗 Frontend: https://codinginfo.vercel.app`);
 });
