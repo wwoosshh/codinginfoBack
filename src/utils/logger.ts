@@ -22,7 +22,7 @@ const logger = winston.createLogger({
   ),
   defaultMeta: {
     service: 'codinginfo-backend',
-    version: '1.3.0',
+    version: '1.3.2',
   },
   transports: [
     // Console transport for development

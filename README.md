@@ -11,7 +11,7 @@ npm run dev
 
 ## 📊 Current Status
 
-- **Version**: v1.3.0
+- **Version**: v1.3.2
 - **Status**: Active Development
 - **Environment**: Node.js + Express + TypeScript + MongoDB
 
@@ -32,6 +32,7 @@ npm run dev
 - **Documentation**: Swagger/OpenAPI 3.0
 - **Logging**: Winston
 - **Deployment**: Railway
+- **Testing**: Jest
 
 ## 📋 API Endpoints
 
@@ -48,6 +49,14 @@ npm run dev
 - `GET /api/admin/dashboard/stats` - Dashboard statistics
 - `GET /api/admin/users` - User management
 - `PATCH /api/admin/users/:id/status` - Update user status
+- `GET /api/admin/articles` - Get all articles (admin view)
+- `POST /api/admin/articles` - Create new article
+- `PUT /api/admin/articles/:id` - Update article
+- `DELETE /api/admin/articles/:id` - Delete article
+- `GET /api/admin/categories` - Get all categories
+- `POST /api/admin/categories` - Create new category
+- `PUT /api/admin/categories/:id` - Update category
+- `DELETE /api/admin/categories/:id` - Delete category
 - `DELETE /api/admin/users/:id` - Delete user
 - `GET /api/admin/articles` - Article management
 - `PATCH /api/admin/articles/:id/status` - Update article status

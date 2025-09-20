@@ -76,7 +76,7 @@ app.get('/health', async (req, res) => {
     res.json({
       status: 'UP',
       timestamp: new Date().toISOString(),
-      version: '1.3.0',
+      version: '1.3.2',
       environment: process.env.NODE_ENV || 'development',
       uptime: process.uptime(),
       database: {

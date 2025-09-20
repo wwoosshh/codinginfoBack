@@ -7,7 +7,7 @@ const options = {
     openapi: '3.0.0',
     info: {
       title: 'CodingInfo API',
-      version: '1.3.0',
+      version: '1.3.2',
       description: 'API documentation for CodingInfo - Programming Learning Platform',
       contact: {
         name: 'CodingInfo Team',
