@@ -57,4 +57,7 @@ router.delete('/categories/:id', deleteCategory);
 
 router.get('/system/health', getSystemHealth);
 
+// 향상된 대시보드 통계
+router.get('/dashboard/analytics', getDashboardAnalytics);
+
 export default router;

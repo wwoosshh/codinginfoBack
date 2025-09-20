@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Article, { ArticleStatus } from '../models/Article';
 import User from '../models/User';
+import Category from '../models/Category';
 import logger from '../utils/logger';
 import mongoose from 'mongoose';
 
@@ -559,7 +560,7 @@ export const getSystemHealth = async (req: Request, res: Response) => {
     const health = {
       status: dbState === 1 && cloudinaryConnected ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
-      version: '1.3.3',
+      version: '1.4.0',
       environment: process.env.NODE_ENV || 'development',
       uptime: process.uptime(),
 
@@ -632,5 +633,81 @@ export const getSystemHealth = async (req: Request, res: Response) => {
       message: 'Internal server error',
       timestamp: new Date().toISOString()
     });
+  }
+};
+// 향상된 대시보드 분석 데이터
+export const getDashboardAnalytics = async (req: Request, res: Response) => {
+  try {
+    logger.info('Enhanced dashboard analytics requested', {
+      adminId: req.user?.userId,
+      timestamp: new Date().toISOString()
+    });
+
+    // 기본 통계
+    const [
+      totalArticles,
+      publishedArticles,
+      draftArticles,
+      totalUsers,
+      totalCategories,
+      totalViews
+    ] = await Promise.all([
+      Article.countDocuments(),
+      Article.countDocuments({ status: 'published' }),
+      Article.countDocuments({ status: 'draft' }),
+      User.countDocuments(),
+      Category.countDocuments(),
+      Article.aggregate([
+        { $group: { _id: null, totalViews: { $sum: '$viewCount' } } }
+      ]).then(result => result[0]?.totalViews || 0)
+    ]);
+
+    // 카테고리별 아티클 분포
+    const categoryStats = await Article.aggregate([
+      { $match: { status: 'published' } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // 인기 아티클 (조회수 기준)
+    const popularArticles = await Article.find({ status: 'published' })
+      .select('title slug viewCount createdAt')
+      .populate('author', 'username')
+      .sort({ viewCount: -1 })
+      .limit(5);
+
+    // 최근 아티클
+    const recentArticles = await Article.find()
+      .select('title status createdAt')
+      .populate('author', 'username')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    res.json({
+      overview: {
+        totalArticles,
+        publishedArticles,
+        draftArticles,
+        totalUsers,
+        totalCategories,
+        totalViews,
+        averageViewsPerArticle: publishedArticles > 0 ? Math.round(totalViews / publishedArticles) : 0
+      },
+      categoryDistribution: categoryStats,
+      popularArticles,
+      recentArticles,
+      metrics: {
+        publishedRate: totalArticles > 0 ? Math.round((publishedArticles / totalArticles) * 100) : 0
+      },
+      lastUpdated: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Error getting enhanced dashboard analytics', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId
+    });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

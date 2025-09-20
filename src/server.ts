@@ -69,6 +69,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 setupSwagger(app);
 
+// 루트 경로 처리 (보안 스캐닝 대응)
+app.get('/', (req, res) => {
+  res.json({
+    name: 'CodingInfo API',
+    version: '1.4.0',
+    docs: '/api-docs',
+    health: '/health'
+  });
+});
+
 app.use('/api/articles', articleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);

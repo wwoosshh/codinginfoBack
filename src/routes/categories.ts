@@ -3,6 +3,15 @@ import { getAllCategories } from '../controllers/categoryController';
 
 const router = express.Router();
 
+// 카테고리 API 응답 캐싱 (5분)
+router.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.set('Cache-Control', 'public, max-age=300'); // 5분 캐싱
+    res.set('ETag', `"categories-${Date.now()}"`);
+  }
+  next();
+});
+
 /**
  * @swagger
  * tags:
