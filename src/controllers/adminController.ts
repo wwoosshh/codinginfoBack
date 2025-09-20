@@ -532,34 +532,92 @@ export const getSystemHealth = async (req: Request, res: Response) => {
       3: 'disconnecting',
     };
 
+    // Get system memory info (this gives process memory, not system memory)
+    const memUsage = process.memoryUsage();
+
+    // Get CPU usage (approximation)
+    const cpuUsage = process.cpuUsage();
+
+    // Check Cloudinary connection
+    let cloudinaryStatus = 'unknown';
+    let cloudinaryConnected = false;
+    try {
+      const cloudinary = require('../config/cloudinary').default;
+      await cloudinary.api.ping();
+      cloudinaryStatus = 'connected';
+      cloudinaryConnected = true;
+    } catch (cloudinaryError) {
+      cloudinaryStatus = 'disconnected';
+      cloudinaryConnected = false;
+    }
+
     const [articleCount, userCount] = await Promise.all([
       Article.countDocuments(),
       User.countDocuments(),
     ]);
 
     const health = {
-      status: 'healthy',
+      status: dbState === 1 && cloudinaryConnected ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
-      database: {
-        status: dbStateMap[dbState as keyof typeof dbStateMap],
-        connected: dbState === 1,
+      version: '1.3.3',
+      environment: process.env.NODE_ENV || 'development',
+      uptime: process.uptime(),
+
+      // 서비스 상태
+      services: {
+        mongodb: {
+          status: dbStateMap[dbState as keyof typeof dbStateMap],
+          connected: dbState === 1,
+          name: 'MongoDB Atlas'
+        },
+        cloudinary: {
+          status: cloudinaryStatus,
+          connected: cloudinaryConnected,
+          name: 'Cloudinary Image Storage'
+        }
       },
+
+      // 데이터 통계
       collections: {
         articles: articleCount,
         users: userCount,
       },
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      version: process.env.npm_package_version || '1.2.2',
+
+      // 시스템 리소스 (프로세스 메모리)
+      memory: {
+        rss: memUsage.rss,
+        heapTotal: memUsage.heapTotal,
+        heapUsed: memUsage.heapUsed,
+        external: memUsage.external,
+        // 메모리 사용률 계산을 위한 추가 정보
+        heapUsagePercent: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
+      },
+
+      // CPU 정보 (프로세스 CPU 시간)
+      cpu: {
+        user: cpuUsage.user,
+        system: cpuUsage.system,
+        // Railway 환경에서는 정확한 CPU 사용률을 측정하기 어려움
+        note: 'CPU times in microseconds (process level)'
+      },
+
+      // 노드 정보
+      node: {
+        version: process.version,
+        platform: process.platform,
+        arch: process.arch
+      }
     };
 
     logger.info('System health check performed', {
       adminId: req.user?.userId,
       health: {
-        dbStatus: health.database.status,
+        dbStatus: health.services.mongodb.status,
+        cloudinaryStatus: health.services.cloudinary.status,
         uptime: health.uptime,
         articleCount,
-        userCount
+        userCount,
+        memoryUsagePercent: health.memory.heapUsagePercent
       }
     });
 
