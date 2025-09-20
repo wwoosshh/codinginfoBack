@@ -12,6 +12,7 @@ import {
   updateArticle,
   getArticleById,
   getSystemHealth,
+  getDashboardAnalytics,
 } from '../controllers/adminController';
 
 import {
