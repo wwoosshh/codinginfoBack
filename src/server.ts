@@ -8,12 +8,14 @@ import dotenv from 'dotenv';
 
 import connectDB from './config/database';
 import { setupSwagger } from './config/swagger';
+import { testCloudinaryConnection } from './config/cloudinary';
 import { globalErrorHandler, notFoundHandler } from './utils/errorHandler';
 import { requestLogger } from './utils/logger';
 import articleRoutes from './routes/articles';
 import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
 import categoryRoutes from './routes/categories';
+import imageRoutes from './routes/images';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -24,6 +26,7 @@ const PORT: number = parseInt(process.env.PORT || '5159', 10);
 const initializeServer = async () => {
   try {
     await connectDB();
+    await testCloudinaryConnection();
     console.log('✅ Server initialization completed');
   } catch (error) {
     console.error('❌ Server initialization failed:', error);
@@ -58,6 +61,7 @@ app.use('/api/articles', articleRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/images', imageRoutes);
 
 app.get('/health', async (req, res) => {
   try {

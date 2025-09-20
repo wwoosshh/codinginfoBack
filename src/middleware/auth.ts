@@ -40,3 +40,16 @@ export const authorize = (roles: string[]) => {
     next();
   };
 };
+
+// 관리자 권한 체크 미들웨어
+export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Access denied. User not authenticated.' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+  }
+
+  next();
+};
