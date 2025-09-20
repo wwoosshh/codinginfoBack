@@ -37,21 +37,33 @@ const initializeServer = async () => {
 initializeServer();
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
+  windowMs: 15 * 60 * 1000, // 15분
+  max: 500, // IP당 15분에 500개 요청 허용 (기존 100개에서 대폭 증가)
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again later.',
+    retryAfter: 15 * 60
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Rate limit 응답에도 CORS 헤더 포함
+  skipSuccessfulRequests: false,
+  skipFailedRequests: false
 });
 
 app.set('trust proxy', 1);
 app.use(helmet());
-app.use(limiter);
-app.use(compression());
-app.use(morgan('combined'));
-app.use(requestLogger);
+
+// CORS를 Rate Limit보다 먼저 적용하여 429 응답에도 CORS 헤더 포함
 app.use(cors({
   origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['https://codinginfo.vercel.app'],
   credentials: true,
 }));
+
+app.use(limiter);
+app.use(compression());
+app.use(morgan('combined'));
+app.use(requestLogger);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
