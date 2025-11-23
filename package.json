@@ -11,7 +11,15 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },
-  "keywords": ["nodejs", "express", "typescript", "mongodb", "api", "programming", "education"],
+  "keywords": [
+    "nodejs",
+    "express",
+    "typescript",
+    "mongodb",
+    "api",
+    "programming",
+    "education"
+  ],
   "author": "CodingInfo Team",
   "repository": {
     "type": "git",
@@ -28,6 +36,7 @@
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
+    "es-hangul": "^2.3.8",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
