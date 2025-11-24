@@ -200,6 +200,50 @@ app.post('/temp/make-admin/:email', async (req, res) => {
   }
 });
 
+// Temporary endpoint to create admin user
+app.post('/temp/create-admin', async (req, res) => {
+  try {
+    const User = (await import('./models/User')).default;
+    const { email, password, username } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        error: 'User already exists',
+        message: `User with email ${email} already exists`
+      });
+    }
+
+    // Create new admin user (password will be auto-hashed by pre-save hook)
+    const adminUser = new User({
+      username: username || email.split('@')[0],
+      email,
+      password,
+      role: 'admin',
+      isActive: true
+    });
+
+    await adminUser.save();
+
+    res.json({
+      success: true,
+      message: `Admin user created successfully`,
+      user: {
+        id: adminUser._id,
+        username: adminUser.username,
+        email: adminUser.email,
+        role: adminUser.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to create admin user',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
