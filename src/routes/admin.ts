@@ -13,6 +13,9 @@ import {
   getArticleById,
   getSystemHealth,
   getDashboardAnalytics,
+  getDraftArticles,
+  approveDraftArticle,
+  rejectDraftArticle,
 } from '../controllers/adminController';
 
 import {
@@ -60,5 +63,10 @@ router.get('/system/health', getSystemHealth);
 
 // 향상된 대시보드 통계
 router.get('/dashboard/analytics', getDashboardAnalytics);
+
+// Draft 아티클 관리 (일반 유저가 제출한 기사 검토)
+router.get('/drafts', getDraftArticles);
+router.post('/drafts/:id/approve', approveDraftArticle);
+router.delete('/drafts/:id/reject', rejectDraftArticle);
 
 export default router;

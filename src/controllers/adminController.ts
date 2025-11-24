@@ -711,3 +711,90 @@ export const getDashboardAnalytics = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+/**
+ * Draft 아티클 목록 조회 (관리자 전용)
+ */
+export const getDraftArticles = async (req: Request, res: Response) => {
+  try {
+    const draftArticles = await Article.find({ status: ArticleStatus.DRAFT })
+      .populate('author', 'username email')
+      .sort({ createdAt: -1 })
+      .select('title description author createdAt category tags');
+
+    res.json(draftArticles);
+  } catch (error) {
+    logger.error('Error getting draft articles', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId
+    });
+    res.status(500).json({ message: 'Failed to get draft articles' });
+  }
+};
+
+/**
+ * Draft 아티클 발행 (관리자 전용)
+ */
+export const approveDraftArticle = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const article = await Article.findById(id);
+
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    if (article.status !== ArticleStatus.DRAFT) {
+      return res.status(400).json({ message: 'Article is not in draft status' });
+    }
+
+    article.status = ArticleStatus.PUBLISHED;
+    article.publishedAt = new Date();
+    await article.save();
+
+    logger.info('Draft article approved and published', {
+      articleId: id,
+      adminId: req.user?.userId
+    });
+
+    res.json({
+      message: 'Article published successfully',
+      article
+    });
+  } catch (error) {
+    logger.error('Error approving draft article', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId
+    });
+    res.status(500).json({ message: 'Failed to approve article' });
+  }
+};
+
+/**
+ * Draft 아티클 거부 (관리자 전용)
+ */
+export const rejectDraftArticle = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const article = await Article.findByIdAndDelete(id);
+
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    logger.info('Draft article rejected and deleted', {
+      articleId: id,
+      adminId: req.user?.userId
+    });
+
+    res.json({ message: 'Article rejected and deleted successfully' });
+  } catch (error) {
+    logger.error('Error rejecting draft article', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      adminId: req.user?.userId
+    });
+    res.status(500).json({ message: 'Failed to reject article' });
+  }
+};

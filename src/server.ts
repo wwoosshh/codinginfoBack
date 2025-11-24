@@ -16,6 +16,8 @@ import authRoutes from './routes/auth';
 import adminRoutes from './routes/admin';
 import categoryRoutes from './routes/categories';
 import imageRoutes from './routes/images';
+import aiConfigRoutes from './routes/aiConfig';
+import aiConversationRoutes from './routes/aiConversations';
 import mongoose from 'mongoose';
 
 dotenv.config();
@@ -84,6 +86,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/admin/ai-config', aiConfigRoutes);
+app.use('/api/admin/ai-conversations', aiConversationRoutes);
 
 app.get('/health', async (req, res) => {
   try {
