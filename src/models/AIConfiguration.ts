@@ -71,7 +71,6 @@ const AIConfigurationSchema: Schema = new Schema(
   }
 );
 
-// 인덱스
-AIConfigurationSchema.index({ userId: 1 });
+// 인덱스는 userId의 unique: true로 자동 생성됨
 
 export default mongoose.model<IAIConfiguration>('AIConfiguration', AIConfigurationSchema);
