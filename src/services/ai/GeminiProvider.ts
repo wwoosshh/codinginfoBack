@@ -225,19 +225,20 @@ ${customInstructions ? `\n추가 지시사항: ${customInstructions}\n` : ''}
 기사 작성 가이드라인:
 1. 제목은 흥미롭고 클릭을 유도해야 합니다 (50자 이내)
 2. 요약은 기사의 핵심을 2-3문장으로 담아야 합니다
-3. 내용은 Markdown 형식으로 작성하세요
-4. 적절한 헤딩(##, ###), 리스트, 코드 블록을 사용하세요
+3. 내용은 Markdown 형식으로 작성하세요 (## 제목, **강조**, 리스트, 코드 블록 등)
+4. 내용에 적절한 줄바꿈(\\n\\n)을 넣어 가독성을 높이세요
 5. 객관적이고 정확한 정보를 제공하세요
 6. 3-5개의 관련 태그를 추천하세요
 
-응답은 반드시 아래 JSON 형식으로만 작성하세요:
+**중요**: 응답은 반드시 순수 JSON 형식으로만 작성하세요. 다른 텍스트는 포함하지 마세요.
 
+형식:
 {
   "title": "기사 제목",
   "description": "기사 요약 (2-3문장)",
-  "content": "Markdown 형식의 기사 본문",
+  "content": "Markdown 형식의 기사 본문\\n\\n단락 구분을 위해 줄바꿈을 반드시 포함하세요",
   "tags": ["태그1", "태그2", "태그3"],
-  "suggestedCategory": "ALGORITHM 또는 WEB_DEVELOPMENT 등 추천 카테고리"
+  "suggestedCategory": "ALGORITHM"
 }
 `;
   }
@@ -250,32 +251,39 @@ ${customInstructions ? `\n추가 지시사항: ${customInstructions}\n` : ''}
       // JSON 코드 블록 제거
       let jsonText = responseText.trim();
 
-      // ```json ... ``` 형식 제거
-      if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/```json\s*/, '').replace(/```\s*$/, '');
+      // ```json ... ``` 형식 제거 (여러 패턴 지원)
+      if (jsonText.includes('```')) {
+        // ```json 또는 ``` 패턴 찾기
+        const jsonMatch = jsonText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[1];
+        } else {
+          // 마지막 ```까지 제거
+          jsonText = jsonText.replace(/^```(?:json)?\s*/, '').replace(/```\s*$/, '');
+        }
       }
 
+      // JSON 파싱
       const parsed = JSON.parse(jsonText);
 
+      // 검증
+      if (!parsed.title || !parsed.content) {
+        throw new Error('Missing required fields in parsed JSON');
+      }
+
       return {
-        title: parsed.title || 'Untitled Article',
+        title: parsed.title,
         description: parsed.description || '',
-        content: parsed.content || '',
+        content: parsed.content,
         tags: Array.isArray(parsed.tags) ? parsed.tags : [],
         suggestedCategory: parsed.suggestedCategory || 'WEB_DEVELOPMENT',
       };
     } catch (error) {
       console.error('Failed to parse article response:', error);
-      console.error('Raw response:', responseText);
+      console.error('Raw response:', responseText.substring(0, 500));
 
-      // 파싱 실패 시 기본 구조 반환
-      return {
-        title: '기사 생성 완료',
-        description: '기사가 생성되었습니다.',
-        content: responseText,
-        tags: [],
-        suggestedCategory: 'WEB_DEVELOPMENT',
-      };
+      // 파싱 실패 시 에러 발생 (잘못된 데이터를 저장하지 않도록)
+      throw new Error('AI가 올바른 형식의 기사를 생성하지 못했습니다. 다시 시도해주세요.');
     }
   }
 }
