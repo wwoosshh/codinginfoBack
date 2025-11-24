@@ -1,10 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import {
   IAIProvider,
   AIMessage,
   AIResponse,
   GeneratedArticle,
 } from './AIProvider.interface';
+import { searchWeb, formatSearchResults } from '../../utils/webSearch';
 
 /**
  * Google Gemini AI Provider 구현
@@ -12,12 +13,38 @@ import {
 export class GeminiProvider implements IAIProvider {
   private genAI: GoogleGenerativeAI;
   private model: any;
+  private modelWithTools: any;
 
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-2.5-flash: 빠르고 효율적, 무료 티어
+
+    // 기본 모델 (도구 없음)
     this.model = this.genAI.getGenerativeModel(
       { model: 'gemini-2.5-flash' },
+      { apiVersion: 'v1beta' }
+    );
+
+    // 웹 검색 도구가 있는 모델
+    this.modelWithTools = this.genAI.getGenerativeModel(
+      {
+        model: 'gemini-2.5-flash',
+        tools: [{
+          functionDeclarations: [{
+            name: 'web_search',
+            description: '최신 정보, 뉴스, 최근 개발 동향을 검색합니다. 2023년 이후의 정보가 필요할 때 사용하세요.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                query: {
+                  type: SchemaType.STRING,
+                  description: '검색할 쿼리 (한국어 또는 영어)',
+                },
+              },
+              required: ['query'],
+            },
+          }],
+        }],
+      },
       { apiVersion: 'v1beta' }
     );
   }
@@ -43,7 +70,7 @@ export class GeminiProvider implements IAIProvider {
   }
 
   /**
-   * 일반 채팅
+   * 일반 채팅 (웹 검색 지원)
    */
   async chat(messages: AIMessage[]): Promise<AIResponse> {
     try {
@@ -55,13 +82,39 @@ export class GeminiProvider implements IAIProvider {
         geminiMessages[0].parts[0].text = `${systemPrompt}\n\n${geminiMessages[0].parts[0].text}`;
       }
 
-      const chat = this.model.startChat({
-        history: geminiMessages.slice(0, -1),  // 마지막 메시지 제외
+      const chat = this.modelWithTools.startChat({
+        history: geminiMessages.slice(0, -1),
       });
 
       const lastMessage = geminiMessages[geminiMessages.length - 1];
-      const result = await chat.sendMessage(lastMessage.parts[0].text);
-      const response = result.response;
+      let result = await chat.sendMessage(lastMessage.parts[0].text);
+      let response = result.response;
+
+      // Function Call 처리
+      let functionCall = response.functionCalls()?.[0];
+
+      if (functionCall) {
+        console.log('AI가 웹 검색을 요청했습니다:', functionCall.args);
+
+        if (functionCall.name === 'web_search') {
+          // 웹 검색 수행
+          const searchQuery = functionCall.args.query as string;
+          const searchResult = await searchWeb(searchQuery);
+          const formattedResults = formatSearchResults(searchResult);
+
+          // 검색 결과를 AI에게 전달
+          result = await chat.sendMessage([{
+            functionResponse: {
+              name: 'web_search',
+              response: {
+                content: formattedResults,
+              },
+            },
+          }]);
+
+          response = result.response;
+        }
+      }
 
       return {
         content: response.text(),
