@@ -16,7 +16,10 @@ export class GeminiProvider implements IAIProvider {
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
     // gemini-1.5-flash: 빠르고 효율적, 무료 티어
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = this.genAI.getGenerativeModel(
+      { model: 'gemini-1.5-flash' },
+      { apiVersion: 'v1beta' }
+    );
   }
 
   /**
