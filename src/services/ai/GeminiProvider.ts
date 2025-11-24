@@ -15,8 +15,8 @@ export class GeminiProvider implements IAIProvider {
 
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-pro: 안정적이고 범용적인 모델, 무료 티어
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // gemini-1.5-flash: 빠르고 효율적, 무료 티어
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
   /**
@@ -62,7 +62,7 @@ export class GeminiProvider implements IAIProvider {
 
       return {
         content: response.text(),
-        model: 'gemini-pro',
+        model: 'gemini-1.5-flash',
       };
     } catch (error: any) {
       console.error('Gemini chat error:', error);
@@ -137,7 +137,7 @@ ${article.content}
    */
   async testConnection(): Promise<boolean> {
     try {
-      const result = await this.model.generateContent('Hello, this is a test.');
+      const result = await this.model.generateContent('Hello');
       return !!result.response.text();
     } catch (error) {
       console.error('Gemini connection test failed:', error);
